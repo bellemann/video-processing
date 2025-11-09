@@ -63,24 +63,29 @@ app.post("/process", upload.single("video"), async (req, res) => {
 
   function generateThumbnail() {
     ffmpeg(tempInput)
+      .on("end", () => {
+        if (fs.existsSync(thumbnailOutput)) {
+          const video = fs.readFileSync(videoOutput);
+          const thumb = fs.readFileSync(thumbnailOutput);
+          cleanup();
+          res.json({
+            video: video.toString("base64"),
+            thumbnail: thumb.toString("base64"),
+          });
+        } else {
+          cleanup();
+          res.status(500).json({ error: "Thumbnail generation failed" });
+        }
+      })
+      .on("error", (err) => {
+        cleanup();
+        res.status(500).json({ error: err.message });
+      })
       .screenshots({
         timestamps: ["00:00:01"],
         filename: `thumb_${Date.now()}.jpg`,
         folder: "/tmp",
         size: "320x180",
-      })
-      .on("end", () => {
-        const video = fs.readFileSync(videoOutput);
-        const thumb = fs.readFileSync(thumbnailOutput);
-        cleanup();
-        res.json({
-          video: video.toString("base64"),
-          thumbnail: thumb.toString("base64"),
-        });
-      })
-      .on("error", (err) => {
-        cleanup();
-        res.status(500).json({ error: err.message });
       });
   }
 
