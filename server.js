@@ -9,6 +9,16 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const AUTH_KEY = process.env.AUTH_KEY;
 
+app.get("/test", (req, res) => {
+  ffmpeg.getAvailableFormats((err, formats) => {
+    res.json({ ffmpegWorking: !err, error: err });
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", version: "1.0.1" });
+});
+
 app.post("/process", upload.single("video"), async (req, res) => {
   // Auth check
   if (req.headers.authorization !== `Bearer ${AUTH_KEY}`) {
@@ -65,20 +75,16 @@ app.post("/process", upload.single("video"), async (req, res) => {
     ffmpeg(tempInput)
       .on("end", () => {
         if (fs.existsSync(thumbnailOutput)) {
-          const video = fs.readFileSync(videoOutput);
-          const thumb = fs.readFileSync(thumbnailOutput);
-          cleanup();
           res.json({
-            video: video.toString("base64"),
-            thumbnail: thumb.toString("base64"),
+            success: true,
+            videoPath: videoOutput,
+            thumbnailPath: thumbnailOutput,
           });
         } else {
-          cleanup();
-          res.status(500).json({ error: "Thumbnail generation failed" });
+          res.status(500).json({ error: "Thumbnail failed" });
         }
       })
       .on("error", (err) => {
-        cleanup();
         res.status(500).json({ error: err.message });
       })
       .screenshots({
